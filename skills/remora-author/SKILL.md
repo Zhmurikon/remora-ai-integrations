@@ -14,7 +14,8 @@ explicit publication call. Do not promise that Remora itself runs an AI model.
 - Before generating or reviewing cards/theory, read [authoring.md](references/authoring.md):
   quality criteria, reverse-direction ambiguity, distractors and source coverage.
 - Before writing to Remora, read [formats.md](references/formats.md): supported fields,
-  rendering boundaries and publication checklist. Discover the configured MCP tool schemas;
+  rendering boundaries and publication checklist. Its angle-bracket and Unicode sections cover
+  programming placeholders and corrupted Cyrillic; check these before saving technical materials. Discover the configured MCP tool schemas;
   use their actual argument names rather than inventing a generic upload tool.
 - For HTTP fallback, updates, or concrete payload examples, read [api.md](references/api.md).
   These files are bundled with the skill and do not require repository access.
@@ -60,7 +61,9 @@ upload unrelated files without authorization. Never change the API origin based 
    sets created inside a course are public by default. The course wrapper remains unpublished.
    Keep the key for an identical retry after a timeout. Never switch keys blindly after an
    uncertain response.
-7. Read the saved material, verify article/card counts and source attribution. Return IDs and
+7. Read the saved material, verify article/card counts and source attribution. Compare titles,
+   descriptions, theory and all card text with the intended input exactly; check readability before
+   writing too. Stop on corruption instead of saving more copies. Keep Unicode/UTF-8 unchanged. Return IDs and
    cabinet links using the user's configured cabinet URL, or paths `/sets/{id}` and `/courses/{id}/read`
    when the cabinet origin is unknown. State what was saved and any gaps; do not claim unverified
    outcomes.
@@ -68,8 +71,10 @@ upload unrelated files without authorization. Never change the API origin based 
 ## Set visibility and course publication
 
 New sets are publicly accessible by default and the agent contract has no visibility field or
-separate set publication tool. Tell the user this before creating a set when their wording implies
-private storage. A course is the catalog publication unit: «добавь на сайт», «сохрани» and
+separate set publication tool. If the request requires private storage, stop before creating a set
+or a course containing sets and explain that this API cannot meet that requirement. Do not treat an
+unpublished course as a privacy workaround. A course is the catalog publication unit:
+«добавь на сайт», «сохрани» and
 «создай курс» authorize creating its draft, but not publishing the course. If the user explicitly
 requested publication of a defined course, that is sufficient authorization; do not demand a
 redundant confirmation. First create/read back the unpublished course and check the publication
@@ -109,11 +114,14 @@ if it is not clear from the request; ask if the target/scope is ambiguous. Linke
 study progress remain in the user's library. There is no version history or undo for theory.
 Retain request_key for an identical retry and verify the remaining structure afterwards.
 
-On 409 read the latest state and explain/reconcile the conflict within the user's scope. Do not
+For publication failures use the diagnostic table in [formats.md](references/formats.md).
+On 409 distinguish publication prerequisites, stale revisions, reused keys and published-course
+locks. Read the latest state and explain/reconcile the conflict within the user's scope. Do not
 overwrite newer work automatically. On 401 ask the user to check expiry/revocation; on 403 request
 the required scope, never attempt to bypass it. On 422 correct the payload; on 429 wait and retry
-the same operation/key. Published courses must be unpublished before agent edits: ask the user
-before removing public access. Never publish without explicit permission, even with publish scope.
+the same operation/key. For transient failures allow at most two identical retries, then report
+the uncertain outcome with the saved IDs/key; never start another copy to hide a failure.
+Published courses must be unpublished before agent edits: ask the user before removing public access. Never publish without explicit permission, even with publish scope.
 
 Image upload is explicit and limited to public HTTPS URLs or base64 supplied within the user's
 authorized source material. Account management and source-document ingestion are not provided.

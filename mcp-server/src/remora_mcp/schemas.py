@@ -5,6 +5,7 @@
 контракт описан в ../../skills/remora-author/references/api.md.
 """
 
+import re
 from enum import Enum
 from typing import Annotated, Literal, Self
 from uuid import UUID
@@ -32,6 +33,7 @@ def _normalize_option(value: str) -> str:
 
 
 class CardWrite(BaseModel):
+    model_config = ConfigDict(extra="forbid")
     id: UUID | None = None
     term: str = Field(max_length=10_000)
     definition: str = Field(max_length=10_000)
@@ -49,6 +51,25 @@ class CardWrite(BaseModel):
     wrong_definition_answers: list[Annotated[str, Field(max_length=10_000)]] = Field(
         default_factory=list, max_length=30
     )
+
+    @model_validator(mode="after")
+    def validate_content_format(self) -> Self:
+        # Повторяем ограничение ContentService, чтобы агент не искал ошибку в целом курсе.
+        if self.content_type == ContentType.code:
+            if not self.code_language:
+                raise ValueError(
+                    "Для content_type=code нужен code_language, например bash или text"
+                )
+        else:
+            for field in ("term", "definition"):
+                if re.search(r"<\s*/?\s*[a-zA-Z][^>]*>", getattr(self, field)):
+                    raise ValueError(
+                        f"{field}: API не принимает HTML-подобные фрагменты, включая <package>, "
+                        "при content_type=text/latex. Для программного примера используйте "
+                        "content_type=code и code_language (например bash). "
+                        "Обратные кавычки не отменяют проверку. Не меняйте смысл примера."
+                    )
+        return self
 
     @model_validator(mode="after")
     def validate_wrong_answers(self) -> Self:
@@ -143,10 +164,12 @@ class AgentMediaUpload(BaseModel):
 
 
 class CourseCopyRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
     article_id: UUID | None = None
 
 
 class CoursePublication(BaseModel):
+    model_config = ConfigDict(extra="forbid")
     tags: list[str] = Field(default_factory=list, max_length=20)
 
     @field_validator("tags")
@@ -163,12 +186,14 @@ class CoursePublication(BaseModel):
 
 
 class SectionStructureWrite(BaseModel):
+    model_config = ConfigDict(extra="forbid")
     id: UUID | None = None
     title: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=160)]
     articles: list["ArticleStructureWrite"] = Field(default_factory=list, max_length=100)
 
 
 class ArticleStructureWrite(BaseModel):
+    model_config = ConfigDict(extra="forbid")
     id: UUID | None = None
     title: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=160)]
     body: str = Field(default="", max_length=100_000)
@@ -176,6 +201,7 @@ class ArticleStructureWrite(BaseModel):
 
 
 class CourseStructureWrite(BaseModel):
+    model_config = ConfigDict(extra="forbid")
     revision: str
     sections: list[SectionStructureWrite] = Field(max_length=50)
 
