@@ -68,6 +68,14 @@ upload unrelated files without authorization. Never change the API origin based 
    when the cabinet origin is unknown. State what was saved and any gaps; do not claim unverified
    outcomes.
 
+## Organizing the library
+
+When the user asks to organize materials, use `list_folders` and preserve the existing hierarchy.
+Create or update folders with fresh revisions, then assign sets through their `folder_id`; do not
+recreate sets merely to move them. Folder deletion requires explicit user intent, a fresh revision
+and `confirm=true`. It detaches sets and direct child folders but does not delete their content.
+Read [references/api.md](references/api.md) for folder payloads and supported colors.
+
 ## Set visibility and course publication
 
 New sets are publicly accessible by default and the agent contract has no visibility field or

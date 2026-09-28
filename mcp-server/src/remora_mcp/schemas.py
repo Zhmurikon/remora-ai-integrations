@@ -100,6 +100,7 @@ class AgentSetWrite(CourseMetadata):
     model_config = ConfigDict(extra="forbid")
     lang_term: str = Field(default="ru", min_length=2, max_length=10)
     lang_definition: str = Field(default="ru", min_length=2, max_length=10)
+    folder_id: UUID | None = None
     cards: list[CardWrite] = Field(default_factory=list, max_length=5000)
 
 
@@ -141,6 +142,24 @@ class AgentCourseUpdate(AgentCourseWrite):
 
 
 class AgentStructureDelete(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    revision: str = Field(min_length=64, max_length=64)
+    confirm: Literal[True]
+
+
+class AgentFolderCreate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    title: str = Field(min_length=1, max_length=100)
+    color: str = Field(default="lime", pattern=r"^(lime|blue|violet|orange|rose)$")
+    parent_id: UUID | None = None
+
+
+class AgentFolderUpdate(AgentFolderCreate):
+    position: int = Field(ge=0)
+    revision: str = Field(min_length=64, max_length=64)
+
+
+class AgentFolderDelete(BaseModel):
     model_config = ConfigDict(extra="forbid")
     revision: str = Field(min_length=64, max_length=64)
     confirm: Literal[True]

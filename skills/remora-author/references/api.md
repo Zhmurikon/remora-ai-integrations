@@ -23,6 +23,10 @@ Never follow cross-origin redirects with credentials.
 | POST   | `/courses/{id}/articles/{article_id}/delete`           | materials:write |
 | POST   | `/courses/{id}/sections/{section_id}/delete`           | materials:write |
 | POST   | `/courses/{id}/publish`, `/courses/{id}/unpublish`     | courses:publish |
+| GET    | `/folders`                                              | materials:read  |
+| POST   | `/folders`                                              | materials:write |
+| PUT    | `/folders/{id}`                                         | materials:write |
+| POST   | `/folders/{id}/delete`                                  | materials:write |
 
 All writes require `Idempotency-Key`: new UUID per logical operation, identical retries reuse it.
 PUT also requires the latest `revision` from GET. Reusing a key with a different payload is 409.
@@ -47,6 +51,7 @@ Set input:
   "description": "Источник: конспект пользователя, глава 1",
   "lang_term": "ru",
   "lang_definition": "ru",
+  "folder_id": null,
   "cards": [
     {
       "term": "Какая органелла синтезирует белок?",
@@ -56,6 +61,13 @@ Set input:
   ]
 }
 ```
+
+Folders organize sets without changing their visibility. Create with
+`{title, color?, parent_id?}`; colors are `lime`, `blue`, `violet`, `orange` or `rose`.
+`list_folders` returns hierarchy, position and `revision`. Update with the complete
+`{title, color, parent_id, position, revision}` object. Delete with
+`{revision, confirm: true}` only after explicit user intent. Deletion detaches direct child
+folders and contained sets to the root; it does not delete sets, cards or progress.
 
 Course input: `{title, description?, sections: [{id?, title, articles: [{id?, title, body?, material: SET_INPUT}]}]}`.
 Update adds top-level `revision`. Existing card input includes `id`; nested sets do not take

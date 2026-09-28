@@ -3,6 +3,8 @@ from pydantic import ValidationError
 
 from remora_mcp.schemas import (
     AgentCourseWrite,
+    AgentFolderCreate,
+    AgentFolderDelete,
     AgentMediaUpload,
     AgentSectionWrite,
     AgentSetWrite,
@@ -33,6 +35,13 @@ def test_media_upload_requires_exactly_one_source() -> None:
         AgentMediaUpload(
             source_url="https://example.com/a.png", data_base64="Zm9v", mime="image/png"
         )
+
+
+def test_folder_schema_rejects_unknown_color_and_unconfirmed_delete() -> None:
+    with pytest.raises(ValidationError):
+        AgentFolderCreate(title="Языки", color="black")
+    with pytest.raises(ValidationError):
+        AgentFolderDelete(revision="a" * 64, confirm=False)
 
 
 def test_media_upload_base64_requires_mime() -> None:

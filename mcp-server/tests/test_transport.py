@@ -36,6 +36,23 @@ KEY = str(uuid4())
 SET = {"title": "Набор", "cards": [{"term": "2 + 2", "definition": "4"}]}
 COURSE = {"title": "Курс", "sections": []}
 CASES = [
+    ("list_folders", {}, "GET", "/folders"),
+    ("create_folder", {"folder": {"title": "Языки"}}, "POST", "/folders"),
+    (
+        "update_folder",
+        {
+            "folder_id": ID,
+            "folder": {"title": "Языки", "color": "blue", "position": 0, "revision": "a" * 64},
+        },
+        "PUT",
+        f"/folders/{ID}",
+    ),
+    (
+        "delete_folder",
+        {"folder_id": ID, "deletion": {"revision": "a" * 64, "confirm": True}},
+        "POST",
+        f"/folders/{ID}/delete",
+    ),
     ("list_sets", {}, "GET", "/sets"),
     ("get_set", {"set_id": ID}, "GET", f"/sets/{ID}"),
     ("create_set", {"material": SET}, "POST", "/sets"),
@@ -95,7 +112,7 @@ async def test_all_tools_route_and_serialize(transport, name, arguments, method,
         assert request.headers["Idempotency-Key"] == KEY
     if name == "publish_course":
         assert json.loads(request.content) == {"tags": ["алгебра"]}
-    if name.startswith("list_"):
+    if name in {"list_sets", "list_courses"}:
         assert dict(request.url.params) == {"offset": "0", "limit": "20"}
     if name == "unpublish_course":
         assert request.content == b""
