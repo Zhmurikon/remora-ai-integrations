@@ -1,3 +1,5 @@
+from uuid import UUID
+
 import pytest
 from pydantic import ValidationError
 
@@ -170,3 +172,24 @@ def test_code_requires_language():
 def test_plain_math_and_cyrillic_not_rejected():
     card = CardWrite(term="x < 5 и x > 0", definition="0 < x < 5; ёлка — дерево")
     assert card.term == "x < 5 и x > 0"
+
+
+def test_mixed_text_formulas_and_side_images_are_preserved():
+    image_id = UUID("11111111-1111-1111-1111-111111111111")
+    card = CardWrite(
+        term="Почему при $x=2$ значение меняется?",
+        definition="Из формулы\n\n$$f(x)=x^2$$\n\nследует $f(2)=4$.",
+        content_type="text",
+        term_image_id=image_id,
+        wrong_definition_answers=["Из формулы $f(x)=x$ следует $f(2)=2$."],
+    )
+    assert card.term == "Почему при $x=2$ значение меняется?"
+    assert card.definition == "Из формулы\n\n$$f(x)=x^2$$\n\nследует $f(2)=4$."
+    assert card.term_image_id == image_id
+
+
+def test_card_json_schema_explains_mixed_content_contract():
+    properties = CardWrite.model_json_schema()["properties"]
+    assert "$...$" in properties["term"]["description"]
+    assert "целиком LaTeX без $" in properties["content_type"]["description"]
+    assert "изображения первой стороны" in properties["term_image_id"]["description"]

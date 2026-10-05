@@ -46,7 +46,10 @@ upload unrelated files without authorization. Never change the API origin based 
    Cite supplied source names/pages/URLs in body
    or set description. Never invent citations or present uncertain claims as established facts.
 3. Each card should test one idea with an unambiguous term and answer. Prefer retrieval questions,
-   not long paragraphs. Avoid duplicates. Add hints/alternative correct answers only when useful.
+   not long paragraphs. Avoid duplicates. For prose containing mathematics, keep
+   `content_type=text` and delimit inline `$...$` expressions; put a `$$...$$` block on separate
+   lines. Reserve `content_type=latex` for cards where both sides are complete formulas without
+   dollar delimiters. Add hints/alternative correct answers only when useful.
 4. Optionally add up to three plausible wrong answers per side:
    `wrong_definition_answers` for term → definition, `wrong_term_answers` for definition → term.
    They must be genuinely incorrect in that context, similar in granularity, and different from
@@ -55,8 +58,10 @@ upload unrelated files without authorization. Never change the API origin based 
 5. Review factual consistency, source coverage, duplicates, spelling and both answer directions.
    If the reverse direction is ambiguous, rewrite the card or explain that limitation.
    When the user requested relevant images, call `upload_image` for each authorized public HTTPS
-   URL or base64 payload. Reuse the returned ID in card image fields or its `markdown_reference`
-   in article body. Do not fetch private URLs, redirects, credentials, or unrelated files.
+   URL or base64 payload. Reuse the returned ID as `term_image_id` and/or
+   `definition_image_id`; an image supplements that side and does not replace its text. Use the
+   returned `markdown_reference` only in article body. Do not fetch private URLs, redirects,
+   credentials, or unrelated files.
 6. Create materials with a new UUID `request_key` for each logical write. New standalone sets and
    sets created inside a course are public by default. The course wrapper remains unpublished.
    Keep the key for an identical retry after a timeout. Never switch keys blindly after an

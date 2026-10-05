@@ -47,11 +47,16 @@ accurate facts with explicit conditions; no duplicates, invented citations or fi
 sources in description/body. Theory must explain the linked cards, not just repeat a Q&A list.
 Check both study directions. Optional wrong answers must be plausible but unambiguously false,
 distinct from the correct answer and alt_answers; omit them if ambiguous (max 30 per side).
-Cards use text/latex/code; Markdown belongs in article body. For text/latex, term and definition
-reject HTML-like angle-bracket fragments, including <package>, <T> and List<T>; Markdown backticks do not bypass this. For literal programming syntax use
-content_type=code with code_language (bash/cpp/html/text as appropriate); code is displayed,
-never executed. Do not globally replace meaningful syntax to make a request pass. Article body
-has separate Markdown rules. No executable HTML/iframe, external image markup or invented fields. Upload authorized images first, then use media:UUID or image IDs.
+Cards use one shared content_type for both sides and answer choices. Use text for ordinary or
+mixed content: inline $...$ may appear inside prose; put block $$...$$ KaTeX on separate lines.
+Use latex only when EACH side is entirely a formula, and then omit dollar delimiters. Use code
+for literal code with code_language (bash/cpp/html/text as appropriate); code is displayed, never
+executed. Card images are independent of text: upload authorized images first, then assign
+term_image_id and/or definition_image_id. Article media instead uses media:UUID in body.
+Do not rely on article-only Markdown features inside cards. For text/latex, term and definition
+reject HTML-like angle-bracket fragments, including <package>, <T> and List<T>; Markdown backticks
+do not bypass this. Do not globally replace meaningful syntax to make a request pass. No executable
+HTML/iframe, external image markup or invented fields.
 
 Limits: title 160 characters; description 5000; card side 10000; hint 1000; transcription 300;
 alt_answers 30; one write up to 50 sections, 100 articles, 5000 cards, body 100000 per article

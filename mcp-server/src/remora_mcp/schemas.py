@@ -35,15 +35,43 @@ def _normalize_option(value: str) -> str:
 class CardWrite(BaseModel):
     model_config = ConfigDict(extra="forbid")
     id: UUID | None = None
-    term: str = Field(max_length=10_000)
-    definition: str = Field(max_length=10_000)
+    term: str = Field(
+        max_length=10_000,
+        description=(
+            "Первая сторона. При content_type=text поддерживает обычный текст, "
+            "строчные $...$ и блочные $$...$$ формулы KaTeX на отдельных строках."
+        ),
+    )
+    definition: str = Field(
+        max_length=10_000,
+        description=(
+            "Вторая сторона. При content_type=text поддерживает обычный текст, "
+            "строчные $...$ и блочные $$...$$ формулы KaTeX на отдельных строках."
+        ),
+    )
     term_transcription: str | None = Field(default=None, max_length=300)
     definition_transcription: str | None = Field(default=None, max_length=300)
     hint: str | None = Field(default=None, max_length=1000)
-    content_type: ContentType = ContentType.text
-    code_language: str | None = Field(default=None, max_length=50)
-    term_image_id: UUID | None = None
-    definition_image_id: UUID | None = None
+    content_type: ContentType = Field(
+        default=ContentType.text,
+        description=(
+            "Общий режим обеих сторон: text — смешанный текст и формулы с разделителями "
+            "$...$ и $$...$$; latex — каждая сторона целиком LaTeX без $; code — код."
+        ),
+    )
+    code_language: str | None = Field(
+        default=None,
+        max_length=50,
+        description="Обязателен только для content_type=code; общий язык обеих сторон.",
+    )
+    term_image_id: UUID | None = Field(
+        default=None,
+        description="ID заранее загруженного изображения первой стороны; текст сохраняется.",
+    )
+    definition_image_id: UUID | None = Field(
+        default=None,
+        description="ID заранее загруженного изображения второй стороны; текст сохраняется.",
+    )
     alt_answers: list[str] = Field(default_factory=list, max_length=30)
     wrong_term_answers: list[Annotated[str, Field(max_length=10_000)]] = Field(
         default_factory=list, max_length=30

@@ -27,6 +27,11 @@ async def test_stdio_handshake_and_schemas() -> None:
         assert len(tools) == 20
         create = next(t for t in tools if t.name == "create_course")
         assert "course" in create.inputSchema["properties"]
+        create_set = next(t for t in tools if t.name == "create_set")
+        card_properties = create_set.inputSchema["$defs"]["CardWrite"]["properties"]
+        assert "$...$" in card_properties["term"]["description"]
+        assert "целиком LaTeX без $" in card_properties["content_type"]["description"]
+        assert "изображения первой стороны" in card_properties["term_image_id"]["description"]
         upload = next(t for t in tools if t.name == "upload_image")
         assert "image" in upload.inputSchema["properties"]
 
@@ -92,6 +97,15 @@ async def test_create_set_round_trip_and_error_mapping(stdio_encoding: str) -> N
                             "alt_answers": ["Установка пакета"],
                             "content_type": "code",
                             "code_language": "bash",
+                        },
+                        {
+                            "term": "Почему при $x=2$ значение меняется?",
+                            "definition": "Из формулы\n\n$$f(x)=x^2$$\n\nследует $f(2)=4$.",
+                            "content_type": "text",
+                            "term_image_id": "11111111-1111-1111-1111-111111111111",
+                            "wrong_definition_answers": [
+                                "Из формулы $f(x)=x$ следует $f(2)=2$."
+                            ],
                         }
                     ],
                 }
@@ -103,8 +117,9 @@ async def test_create_set_round_trip_and_error_mapping(stdio_encoding: str) -> N
                 data = result.structuredContent or json.loads(result.content[0].text)
                 assert data["title"] == material["title"]
                 assert data["description"] == material["description"]
-                for key, value in material["cards"][0].items():
-                    assert data["cards"][0][key] == value
+                for index, card in enumerate(material["cards"]):
+                    for key, value in card.items():
+                        assert data["cards"][index][key] == value
 
                 error = await session.call_tool(
                     "get_set", {"set_id": "22222222-2222-2222-2222-222222222222"}

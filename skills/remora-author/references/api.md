@@ -54,9 +54,10 @@ Set input:
   "folder_id": null,
   "cards": [
     {
-      "term": "Какая органелла синтезирует белок?",
-      "definition": "Рибосома",
-      "wrong_definition_answers": ["Лизосома", "Центриоль", "Вакуоль"]
+      "term": "Как записывается энергия фотона с частотой $\\nu$?",
+      "definition": "$E=h\\nu$",
+      "content_type": "text",
+      "wrong_definition_answers": ["$E=mc^2$", "$p=mv$", "$F=ma$"]
     }
   ]
 }
@@ -75,6 +76,12 @@ set `id` or `revision`: article ID identifies the linked set and course revision
 Read response includes IDs, positions, timestamps, visibility, counts and revisions; these are not
 write fields. Preserve optional card data such as hint, alt_answers, transcriptions, image IDs,
 content_type and code_language when updating.
+
+For mixed prose and mathematics use `content_type: "text"` with `$...$` or `$$...$$` in
+`term`/`definition` and formula-bearing wrong answers; place `$$...$$` blocks on separate lines.
+Use `latex` only when both sides are entire formulas and omit dollar delimiters there. Upload an
+image first, then set its returned `id` as `term_image_id` or `definition_image_id`; these fields
+supplement rather than replace side text.
 
 Limits per course request: 50 sections, 100 articles, 5000 cards, 100,000 characters per body,
 1,000,000 characters of theory total. Empty courses/sections are allowed as drafts. No implicit deletion
