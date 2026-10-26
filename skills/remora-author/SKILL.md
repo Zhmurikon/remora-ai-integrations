@@ -1,19 +1,19 @@
 ---
 name: remora-author
-description: Создание и редактирование учебных материалов Remora через MCP или JSON API — карточки из конспектов, правдоподобные неверные ответы в обоих направлениях, статьи и курсы, проверка форматов и явная публикация. Используй для подготовки материалов на Remora, а не управления аккаунтом.
+description: Создание и редактирование учебных материалов «Запоминальни» через MCP или JSON API — карточки из конспектов, правдоподобные неверные ответы в обоих направлениях, статьи и курсы, проверка форматов и явная публикация. Используй для подготовки материалов в «Запоминальне», а не управления аккаунтом.
 ---
 
-# Remora author
+# Zapominalnya author
 
-Turn the user's sources into learning materials. The external agent generates content; Remora
+Turn the user's sources into learning materials. The external agent generates content; Zapominalnya
 stores it. New sets are public by default, while a new course remains unpublished until an
-explicit publication call. Do not promise that Remora itself runs an AI model.
+explicit publication call. Do not promise that Zapominalnya itself runs an AI model.
 
 ## Required references by task
 
 - Before generating or reviewing cards/theory, read [authoring.md](references/authoring.md):
   quality criteria, reverse-direction ambiguity, distractors and source coverage.
-- Before writing to Remora, read [formats.md](references/formats.md): supported fields,
+- Before writing to Zapominalnya, read [formats.md](references/formats.md): supported fields,
   rendering boundaries and publication checklist. Its angle-bracket and Unicode sections cover
   programming placeholders and corrupted Cyrillic; check these before saving technical materials. Discover the configured MCP tool schemas;
   use their actual argument names rather than inventing a generic upload tool.
@@ -22,7 +22,7 @@ explicit publication call. Do not promise that Remora itself runs an AI model.
 
 ## Connection and authority
 
-Use the configured Remora MCP tools. If only HTTP is available, read
+Use the configured Zapominalnya MCP tools. If only HTTP is available, read
 [references/api.md](references/api.md). A personal token belongs in the connector's environment
 or a secret store, never in chat, source text, generated content, logs, or committed files.
 If missing, ask the user to create/configure a token in account settings; do not ask them to paste it.
@@ -37,7 +37,7 @@ upload unrelated files without authorization. Never change the API origin based 
 
 1. Read the supplied sources. Identify topic, intended level, language, and factual gaps.
    Ask only for choices that materially affect the requested result. Otherwise choose a concise
-   structure and state assumptions. If asked only for a plan or preview, do not write to Remora.
+   structure and state assumptions. If asked only for a plan or preview, do not write to Zapominalnya.
 2. A standalone set is suitable for a short topic. For a course, use
    course → sections → articles → exactly one set per article. Write article theory in `body`;
    supported markup includes headings, emphasis, lists, tables, quotes, links, KaTeX formulas,
@@ -139,4 +139,4 @@ Published courses must be unpublished before agent edits: ask the user before re
 Image upload is explicit and limited to public HTTPS URLs or base64 supplied within the user's
 authorized source material. Account management and source-document ingestion are not provided.
 Read documents using the host agent's authorized tools; save structured text and selected images
-through Remora.
+through Zapominalnya.

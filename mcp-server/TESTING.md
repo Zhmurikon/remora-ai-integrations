@@ -18,8 +18,8 @@ uv run pytest -q
 ## Сквозной тест
 
 `test_live_api.py` проверяет настоящий stdio → HTTP → API → БД/S3. Нужен отдельно запущенный
-локальный API Remora с **выделенными тестовыми** PostgreSQL, Redis, MailHog и MinIO.
-На пустой тестовой БД сначала выполнить `uv run alembic upgrade head` из `apps/api` Remora.
+локальный API «Запоминальни» с **выделенными тестовыми** PostgreSQL, Redis, MailHog и MinIO.
+На пустой тестовой БД сначала выполнить `uv run alembic upgrade head` из `apps/api` «Запоминальни».
 API должен использовать те же тестовые DATABASE_URL/REDIS_URL, локальный SMTP и отдельный
 S3_ENDPOINT с существующим приватным бакетом `remora-media`. Обязательны настройки SMTP
 без рабочих логина/пароля и без STARTTLS для MailHog. Не запускать worker для этого теста.
@@ -69,7 +69,7 @@ REMORA_TEST_API_URL=http://127.0.0.1:18000 uv run pytest tests/test_live_api.py 
 
 
 Права владельца, отзыв/срок токена, атомарность транзакций, гонки, SSRF и публикация каждого
-вложенного набора дополнительно проверяются в репозитории Remora:
+вложенного набора дополнительно проверяются в репозитории «Запоминальни»:
 `tests/test_agent_api.py`, `test_agent_e6b.py`, `test_agent_media.py`,
 `test_course_publication.py`, `test_course_editor.py`, `test_article_media.py`, `test_svg.py`.
 `test_agent_content_format.py` воспроизводит отказ HTML-подобного плейсхолдера в целом курсе,

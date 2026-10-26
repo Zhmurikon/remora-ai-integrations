@@ -1,1 +1,1 @@
-"""MCP-коннектор к агентскому JSON API Remora (https://remora.com.ru/)."""
+"""MCP-коннектор к агентскому JSON API «Запоминальни» (https://zapominalnya.ru/)."""

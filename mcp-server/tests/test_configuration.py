@@ -20,7 +20,7 @@ def test_rejects_unsafe_origin(origin: str, monkeypatch: pytest.MonkeyPatch) -> 
         server.configuration()
 
 
-@pytest.mark.parametrize("origin", ["http://localhost:8000", "https://remora.com.ru"])
+@pytest.mark.parametrize("origin", ["http://localhost:8000", "https://zapominalnya.ru"])
 def test_accepts_safe_origin(origin: str, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("REMORA_API_URL", origin)
     monkeypatch.setenv("REMORA_API_TOKEN", "rmr_" + "x" * 64)
@@ -41,13 +41,15 @@ def test_rejects_bad_token(token: str, monkeypatch: pytest.MonkeyPatch) -> None:
     "token", ["rmr_" + "x" * 63 + "\n", "rmr_" + "я" * 64, "rmr_" + "x" * 63 + " "]
 )
 def test_token_must_be_urlsafe(token, monkeypatch):
-    monkeypatch.setenv("REMORA_API_URL", "https://remora.com.ru")
+    monkeypatch.setenv("REMORA_API_URL", "https://zapominalnya.ru")
     monkeypatch.setenv("REMORA_API_TOKEN", token)
     with pytest.raises(ValueError):
         server.configuration()
 
 
-@pytest.mark.parametrize("origin", ["https://remora.com.ru:bad", "https://remora.com.ru:99999"])
+@pytest.mark.parametrize(
+    "origin", ["https://zapominalnya.ru:bad", "https://zapominalnya.ru:99999"]
+)
 def test_origin_port_is_validated(origin, monkeypatch):
     monkeypatch.setenv("REMORA_API_URL", origin)
     monkeypatch.setenv("REMORA_API_TOKEN", "rmr_" + "x" * 64)
