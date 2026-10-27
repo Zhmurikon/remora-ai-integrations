@@ -232,6 +232,77 @@ class CoursePublication(BaseModel):
         return result
 
 
+Slug = Annotated[str, StringConstraints(pattern=r"^[a-z0-9]+(?:-[a-z0-9]+)*$")]
+BlogTone = Literal["mint", "lavender", "peach"]
+BlogParagraph = Annotated[str, StringConstraints(min_length=1, max_length=5000)]
+BlogStep = Annotated[str, StringConstraints(min_length=1, max_length=2000)]
+BlogDiagramLabel = Annotated[str, StringConstraints(min_length=1, max_length=80)]
+
+
+class BlogSource(BaseModel):
+    model_config = ConfigDict(str_strip_whitespace=True, extra="forbid")
+    title: str = Field(min_length=1, max_length=240)
+    url: HttpUrl
+
+
+class BlogExample(BaseModel):
+    model_config = ConfigDict(str_strip_whitespace=True, extra="forbid")
+    question: str = Field(min_length=1, max_length=2000)
+    answer: str = Field(min_length=1, max_length=4000)
+
+
+class BlogSectionWrite(BaseModel):
+    model_config = ConfigDict(str_strip_whitespace=True, extra="forbid")
+    id: Slug
+    title: str = Field(min_length=1, max_length=180)
+    paragraphs: list[BlogParagraph] = Field(default_factory=list, max_length=100)
+    rich_text: str = Field(default="", max_length=100_000)
+    steps: list[BlogStep] = Field(default_factory=list, max_length=100)
+    example: BlogExample | None = None
+
+
+class BlogPostWrite(BaseModel):
+    model_config = ConfigDict(str_strip_whitespace=True, extra="forbid")
+    slug: Slug
+    title: str = Field(min_length=1, max_length=180)
+    description: str = Field(min_length=1, max_length=500)
+    category: str = Field(min_length=1, max_length=80)
+    tone: BlogTone = "mint"
+    diagram: tuple[BlogDiagramLabel, BlogDiagramLabel, BlogDiagramLabel]
+    cover_media_id: UUID | None = None
+    cover_alt: str | None = Field(default=None, max_length=300)
+    sections: list[BlogSectionWrite] = Field(min_length=1, max_length=50)
+    sources: list[BlogSource] = Field(default_factory=list, max_length=50)
+    related: list[Slug] = Field(default_factory=list, max_length=20)
+
+    @model_validator(mode="after")
+    def validate_document(self) -> Self:
+        if len({section.id for section in self.sections}) != len(self.sections):
+            raise ValueError("Якоря разделов должны быть уникальны")
+        if self.cover_media_id and not self.cover_alt:
+            raise ValueError("Для обложки нужен осмысленный cover_alt")
+        if (
+            sum(
+                len(section.rich_text)
+                + sum(map(len, section.paragraphs))
+                + sum(map(len, section.steps))
+                for section in self.sections
+            )
+            > 300_000
+        ):
+            raise ValueError("Текст статьи превышает 300 000 символов")
+        return self
+
+
+class BlogPostUpdate(BlogPostWrite):
+    revision: int = Field(ge=1)
+
+
+class BlogPublication(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    revision: int = Field(ge=1)
+
+
 class SectionStructureWrite(BaseModel):
     model_config = ConfigDict(extra="forbid")
     id: UUID | None = None

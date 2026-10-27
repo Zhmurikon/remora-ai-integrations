@@ -22,6 +22,9 @@ from remora_mcp.schemas import (
     AgentSetUpdate,
     AgentSetWrite,
     AgentStructureDelete,
+    BlogPostUpdate,
+    BlogPostWrite,
+    BlogPublication,
     CourseCopyRequest,
     CoursePublication,
     CourseStructureWrite,
@@ -41,6 +44,13 @@ Before publication, read back the course: it needs at least one article and card
 owned/ready media and valid tags (up to 20; 1–60 letters/digits/spaces/hyphens/underscores).
 Verify is_published after writing; catalog listing is separate. Unpublishing a course does not
 make its sets private. Do not automatically unpublish to edit or create copies after a failure.
+
+Editorial blog access is admin-only and uses separate blog:read, blog:write and blog:publish
+scopes. Saving always creates or updates a draft. Publish or unpublish a blog post only after an
+explicit user request; a scope alone is not authorization. Read back the current integer revision
+before every update or publication. A published post must be unpublished before it can be edited.
+Blog rich_text supports safe Markdown and media:UUID references; upload those images with
+upload_blog_image. Never invent sources, publication claims or inaccessible media.
 
 Content requirements: one testable idea per card; nonempty, unambiguous term and definition;
 accurate facts with explicit conditions; no duplicates, invented citations or filler. Attribute
@@ -224,9 +234,7 @@ async def create_folder(folder: AgentFolderCreate, request_key: RequestKey) -> A
 
 
 @mcp.tool(annotations=WRITE)
-async def update_folder(
-    folder_id: UUID, folder: AgentFolderUpdate, request_key: RequestKey
-) -> Any:
+async def update_folder(folder_id: UUID, folder: AgentFolderUpdate, request_key: RequestKey) -> Any:
     """Replace folder metadata using a fresh revision from list_folders."""
     return await request("PUT", f"/folders/{folder_id}", folder, request_key)
 
@@ -237,6 +245,52 @@ async def delete_folder(
 ) -> Any:
     """Delete only the folder after explicit user intent; sets and child folders are detached."""
     return await request("POST", f"/folders/{folder_id}/delete", deletion, request_key)
+
+
+@mcp.tool(annotations=MEDIA_WRITE)
+async def upload_blog_image(image: AgentMediaUpload, request_key: RequestKey) -> Any:
+    """Upload an editorial image with blog:write; returns media ID and Markdown reference."""
+    return await request("POST", "/blog/media", image, request_key)
+
+
+@mcp.tool(annotations=READ)
+async def list_blog_posts(offset: Offset = 0, limit: PageLimit = 20) -> Any:
+    """List editorial drafts and publications. Admin and blog:read only."""
+    return await request("GET", "/blog/posts", params={"offset": offset, "limit": limit})
+
+
+@mcp.tool(annotations=READ)
+async def get_blog_post(post_id: UUID) -> Any:
+    """Read one editorial post and its current integer revision before editing."""
+    return await request("GET", f"/blog/posts/{post_id}")
+
+
+@mcp.tool(annotations=WRITE)
+async def create_blog_post(post: BlogPostWrite, request_key: RequestKey) -> Any:
+    """Create an UNPUBLISHED editorial draft. Admin and blog:write only."""
+    return await request("POST", "/blog/posts", post, request_key)
+
+
+@mcp.tool(annotations=WRITE)
+async def update_blog_post(post_id: UUID, post: BlogPostUpdate, request_key: RequestKey) -> Any:
+    """Replace an unpublished draft using the revision from get_blog_post."""
+    return await request("PUT", f"/blog/posts/{post_id}", post, request_key)
+
+
+@mcp.tool(annotations=WRITE)
+async def publish_blog_post(
+    post_id: UUID, publication: BlogPublication, request_key: RequestKey
+) -> Any:
+    """Publish a draft only on explicit user request. Requires blog:publish."""
+    return await request("POST", f"/blog/posts/{post_id}/publish", publication, request_key)
+
+
+@mcp.tool(annotations=WRITE)
+async def unpublish_blog_post(
+    post_id: UUID, publication: BlogPublication, request_key: RequestKey
+) -> Any:
+    """Remove a post from the public blog only on explicit user request."""
+    return await request("POST", f"/blog/posts/{post_id}/unpublish", publication, request_key)
 
 
 @mcp.tool(annotations=READ)

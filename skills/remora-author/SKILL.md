@@ -1,6 +1,6 @@
 ---
 name: remora-author
-description: Создание и редактирование учебных материалов Запоминальни через MCP или JSON API — карточки из конспектов, правдоподобные неверные ответы в обоих направлениях, статьи и курсы, проверка форматов и явная публикация. Используй для подготовки материалов в Запоминальне, а не управления аккаунтом.
+description: Создание и редактирование учебных материалов и редакционного блога Запоминальни через MCP или JSON API — карточки, курсы, статьи, медиа и явная публикация. Используй для подготовки контента в Запоминальне, а не управления аккаунтом.
 ---
 
 # Автор материалов Запоминальни
@@ -19,6 +19,8 @@ until an explicit publication call. Do not promise that Zapominalnya itself runs
   use their actual argument names rather than inventing a generic upload tool.
 - For HTTP fallback, updates, or concrete payload examples, read [api.md](references/api.md).
   These files are bundled with the skill and do not require repository access.
+- For an editorial blog request, read the blog section in [api.md](references/api.md). Blog tools
+  are admin-only and do not create user courses or sets.
 
 ## Connection and authority
 
@@ -80,6 +82,25 @@ Create or update folders with fresh revisions, then assign sets through their `f
 recreate sets merely to move them. Folder deletion requires explicit user intent, a fresh revision
 and `confirm=true`. It detaches sets and direct child folders but does not delete their content.
 Read [references/api.md](references/api.md) for folder payloads and supported colors.
+
+## Editorial blog
+
+Use the blog tools only when the user asks to prepare or manage the editorial site blog and the
+configured account is an administrator. Ordinary learning articles inside a course continue to use
+the course tools. Request only `blog:read`/`blog:write`; `blog:publish` is separate and should be
+enabled only when publication is actually needed.
+
+Create a draft with `create_blog_post`, then read it back and verify title, description, anchors,
+facts, citations, rich text and media. Use `upload_blog_image` for an authorized public HTTPS or
+base64 image; put its ID in `cover_media_id` with a meaningful `cover_alt`, or use the returned
+`media:UUID` reference inside section rich text. Never invent sources or use inaccessible images.
+
+Updates replace the whole draft and require the current integer `revision`; preserve every
+untouched field. Published posts are locked against editing. Unpublishing changes public access,
+so do it only when the user explicitly requests that consequence. Creating or updating a draft
+does not authorize publication. If the user explicitly requested publication of the defined post,
+call `publish_blog_post` separately with the latest revision and a new request key, then read back
+the status. A scope alone is not authorization. Public blog caches may take up to one minute.
 
 ## Set visibility and course publication
 

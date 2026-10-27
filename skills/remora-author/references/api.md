@@ -27,6 +27,10 @@ Never follow cross-origin redirects with credentials.
 | POST   | `/folders`                                              | materials:write |
 | PUT    | `/folders/{id}`                                         | materials:write |
 | POST   | `/folders/{id}/delete`                                  | materials:write |
+| GET    | `/blog/posts`, `/blog/posts/{id}`                      | blog:read       |
+| POST   | `/blog/media`, `/blog/posts`                           | blog:write      |
+| PUT    | `/blog/posts/{id}`                                     | blog:write      |
+| POST   | `/blog/posts/{id}/publish`, `/blog/posts/{id}/unpublish` | blog:publish  |
 
 All writes require `Idempotency-Key`: new UUID per logical operation, identical retries reuse it.
 PUT also requires the latest `revision` from GET. Reusing a key with a different payload is 409.
@@ -42,6 +46,47 @@ or `{"data_base64":"...","mime":"image/png","filename":"diagram.png","alt":"..."
 The URL must be public HTTPS; redirects and private/reserved addresses are rejected. The response
 contains `id`, validated metadata and `markdown_reference` ready for article body. SVG is sanitized.
 Every upload requires `Idempotency-Key` and `materials:write`.
+
+For editorial blog images, use `/blog/media` or MCP `upload_blog_image`; the same payload and
+media validation apply, but the required scope is `blog:write`.
+
+## Editorial blog operations
+
+These operations are available only to an administrator. `create_blog_post` always creates a
+draft. Update, publish and unpublish require the latest integer `revision`; every write also uses
+an idempotency key. An update replaces the complete document and published posts must first be
+explicitly unpublished.
+
+```json
+{
+  "slug": "intervalnoe-povtorenie",
+  "title": "Как работает интервальное повторение",
+  "description": "Когда возвращаться к материалу и как проверять себя.",
+  "category": "Учебные привычки",
+  "tone": "mint",
+  "diagram": ["Материал", "Интервал", "Проверка"],
+  "cover_media_id": null,
+  "cover_alt": null,
+  "sections": [
+    {
+      "id": "princip",
+      "title": "Принцип",
+      "paragraphs": ["Возвращайтесь к материалу и отвечайте без подсказки."],
+      "rich_text": "## Пример\n\nБезопасный Markdown.",
+      "steps": [],
+      "example": null
+    }
+  ],
+  "sources": [{"title": "Источник", "url": "https://example.org/research"}],
+  "related": []
+}
+```
+
+Slug and section IDs use lowercase Latin letters, digits and hyphens. Section IDs are unique.
+`tone` is `mint`, `lavender` or `peach`; `diagram` always has three strings. A cover media ID
+requires meaningful `cover_alt`. Section `rich_text` supports safe Markdown, tables, quotes,
+code, KaTeX and `![alt](media:UUID)`; raw HTML and remote Markdown images are not executed.
+Update adds top-level `revision`. Publish and unpublish bodies are `{"revision": 2}`.
 
 Set input:
 

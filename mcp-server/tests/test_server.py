@@ -24,7 +24,7 @@ async def test_stdio_handshake_and_schemas() -> None:
     async with stdio_client(params) as (read, write), ClientSession(read, write) as session:
         await session.initialize()
         tools = (await session.list_tools()).tools
-        assert len(tools) == 20
+        assert len(tools) == 27
         create = next(t for t in tools if t.name == "create_course")
         assert "course" in create.inputSchema["properties"]
         create_set = next(t for t in tools if t.name == "create_set")
@@ -34,6 +34,8 @@ async def test_stdio_handshake_and_schemas() -> None:
         assert "изображения первой стороны" in card_properties["term_image_id"]["description"]
         upload = next(t for t in tools if t.name == "upload_image")
         assert "image" in upload.inputSchema["properties"]
+        blog = next(t for t in tools if t.name == "create_blog_post")
+        assert "post" in blog.inputSchema["properties"]
 
 
 def _stub_agent_api() -> FastAPI:

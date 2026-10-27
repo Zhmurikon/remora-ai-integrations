@@ -35,6 +35,14 @@ ID = str(uuid4())
 KEY = str(uuid4())
 SET = {"title": "Набор", "cards": [{"term": "2 + 2", "definition": "4"}]}
 COURSE = {"title": "Курс", "sections": []}
+BLOG = {
+    "slug": "intervalnoe-povtorenie",
+    "title": "Интервальное повторение",
+    "description": "Как распределять проверки материала во времени.",
+    "category": "Учебные привычки",
+    "diagram": ["Материал", "Интервал", "Проверка"],
+    "sections": [{"id": "princip", "title": "Принцип", "paragraphs": ["Текст."]}],
+}
 CASES = [
     ("list_folders", {}, "GET", "/folders"),
     ("create_folder", {"folder": {"title": "Языки"}}, "POST", "/folders"),
@@ -52,6 +60,33 @@ CASES = [
         {"folder_id": ID, "deletion": {"revision": "a" * 64, "confirm": True}},
         "POST",
         f"/folders/{ID}/delete",
+    ),
+    (
+        "upload_blog_image",
+        {"image": {"data_base64": "YWJj", "mime": "image/png"}},
+        "POST",
+        "/blog/media",
+    ),
+    ("list_blog_posts", {}, "GET", "/blog/posts"),
+    ("get_blog_post", {"post_id": ID}, "GET", f"/blog/posts/{ID}"),
+    ("create_blog_post", {"post": BLOG}, "POST", "/blog/posts"),
+    (
+        "update_blog_post",
+        {"post_id": ID, "post": {**BLOG, "revision": 1}},
+        "PUT",
+        f"/blog/posts/{ID}",
+    ),
+    (
+        "publish_blog_post",
+        {"post_id": ID, "publication": {"revision": 1}},
+        "POST",
+        f"/blog/posts/{ID}/publish",
+    ),
+    (
+        "unpublish_blog_post",
+        {"post_id": ID, "publication": {"revision": 2}},
+        "POST",
+        f"/blog/posts/{ID}/unpublish",
     ),
     ("list_sets", {}, "GET", "/sets"),
     ("get_set", {"set_id": ID}, "GET", f"/sets/{ID}"),
@@ -112,7 +147,7 @@ async def test_all_tools_route_and_serialize(transport, name, arguments, method,
         assert request.headers["Idempotency-Key"] == KEY
     if name == "publish_course":
         assert json.loads(request.content) == {"tags": ["алгебра"]}
-    if name in {"list_sets", "list_courses"}:
+    if name in {"list_sets", "list_courses", "list_blog_posts"}:
         assert dict(request.url.params) == {"offset": "0", "limit": "20"}
     if name == "unpublish_course":
         assert request.content == b""
