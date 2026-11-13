@@ -164,12 +164,12 @@ MCP `update_course_structure(course_id, structure, request_key)` / PUT structure
 Include all existing sections/articles exactly once. Existing articles retain their set_id.
 For a new article, set_id attaches an own set not already linked to any article; omitted/null
 set_id creates a new empty set. Cards are not replaced. Empty sections are allowed.
-Publication must be removed separately before mutations.
+Published courses can be edited in place.
 
 ## Copy/delete operations
 
 - `copy_course(course_id, selection, request_key)`: POST copy with `{}` or `{article_id: UUID}`.
-  Own or accessible published sources only. Returns new private CourseEditorDetail (structure),
+  Own or accessible published sources only. Returns new public CourseEditorDetail (structure),
   not full cards. Read `get_course(new_id)` to verify cards and obtain full-course revision.
   An article becomes its own course; media and wrong answers are copied, study progress is not.
 - `delete_course_article(course_id, article_id, deletion, request_key)` and
@@ -179,4 +179,4 @@ Publication must be removed separately before mutations.
   Response is the remaining CourseEditorDetail with new structure revision.
 - All writes require materials:write and Idempotency-Key; deletion does not require publish
   scope, but cannot silently unpublish a course. Unsupported target returns 404, stale revision
-  or published-course mutation returns 409; missing/false confirmation returns 422.
+  returns 409; missing/false confirmation returns 422.

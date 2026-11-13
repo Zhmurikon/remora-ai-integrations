@@ -140,12 +140,12 @@ async def test_publication_lifecycle_over_stdio():
                 )
                 cid = course["id"]
                 course_args = {"course_id": cid}
-                assert not course["is_published"]
+                assert course["is_published"]
                 assert course["sections"][0]["articles"][0]["material"]["visibility"] == "public"
                 assert len(await call("list_courses", {})) == 1
                 assert (
                     await api.get("/api/v1/courses/public/" + course["slug"])
-                ).status_code == 404
+                ).status_code == 200
                 fresh = await call("get_course", course_args)
                 update = {**course_input, "revision": fresh["revision"]}
                 update["sections"][0]["id"] = fresh["sections"][0]["id"]
@@ -215,17 +215,17 @@ async def test_publication_lifecycle_over_stdio():
                     "copy_course", {**course_args, "selection": {}, "request_key": str(uuid4())}
                 )
                 copy_full = await call("get_course", {"course_id": copied["id"]})
-                assert not copy_full["is_published"]
+                assert copy_full["is_published"]
                 assert image["id"] not in copy_full["sections"][0]["articles"][0]["body"]
                 assert "media:" in copy_full["sections"][0]["articles"][0]["body"]
                 assert (
                     copy_full["sections"][0]["articles"][0]["material"]["cards"][0]["id"]
                     != original["material"]["cards"][0]["id"]
                 )
-                await call("unpublish_course", {**course_args, "request_key": str(uuid4())})
+                await call("unpublish_course", {**course_args, "request_key": str(uuid4())}, "402")
                 assert (
                     await api.get("/api/v1/courses/public/" + course["slug"])
-                ).status_code == 404
+                ).status_code == 200
                 nested = await call("get_set", {"set_id": original["material"]["id"]})
                 assert nested["visibility"] == "public"
 
@@ -253,7 +253,6 @@ async def test_publication_lifecycle_over_stdio():
                 await call(
                     "publish_course",
                     {**publication, "request_key": str(uuid4())},
-                    "Добавьте в курс набор карточек",
                 )
                 await call(
                     "upload_image",

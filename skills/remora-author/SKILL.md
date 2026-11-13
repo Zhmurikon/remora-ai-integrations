@@ -6,8 +6,7 @@ description: Создание и редактирование учебных м�
 # Автор материалов Запоминальни
 
 Turn the user's sources into learning materials. The external agent generates content;
-Zapominalnya stores it. New sets are public by default, while a new course remains unpublished
-until an explicit publication call. Do not promise that Zapominalnya itself runs an AI model.
+Zapominalnya stores it. Courses, articles and sets are public by default. Do not promise that Zapominalnya itself runs an AI model.
 
 ## Required references by task
 
@@ -65,7 +64,7 @@ upload unrelated files without authorization. Never change the API origin based 
    returned `markdown_reference` only in article body. Do not fetch private URLs, redirects,
    credentials, or unrelated files.
 6. Create materials with a new UUID `request_key` for each logical write. New standalone sets and
-   sets created inside a course are public by default. The course wrapper remains unpublished.
+   sets created inside a course are public by default. Courses are public by default.
    Keep the key for an identical retry after a timeout. Never switch keys blindly after an
    uncertain response.
 7. Read the saved material, verify article/card counts and source attribution. Compare titles,
@@ -104,19 +103,11 @@ the status. A scope alone is not authorization. Public blog caches may take up t
 
 ## Set visibility and course publication
 
-New sets are publicly accessible by default and the agent contract has no visibility field or
-separate set publication tool. If the request requires private storage, stop before creating a set
-or a course containing sets and explain that this API cannot meet that requirement. Do not treat an
-unpublished course as a privacy workaround. A course is the catalog publication unit:
-«добавь на сайт», «сохрани» and
-«создай курс» authorize creating its draft, but not publishing the course. If the user explicitly
-requested publication of a defined course, that is sufficient authorization; do not demand a
-redundant confirmation. First create/read back the unpublished course and check the publication
-requirements in formats.md,
-then call publish_course with a separate request_key and publication.tags. Verify is_published
-afterwards. A failed publication does not undo course creation: report the saved course ID and
-the publication error instead of creating another copy. Never claim catalog listing merely
-because is_published is true; listing/moderation may differ.
+Public is the recommended default for new courses and sets. For a private course use
+`is_published: false` at creation. For a private set use `visibility: "private"`.
+Both require Plus or Pro. If the service denies a requested private write, report the error.
+Editing a public course updates its public contents. Hiding a course removes access to its
+articles. Existing sets retain their own visibility. Verify the saved visibility after writing.
 
 ## Updating safely
 
@@ -137,9 +128,9 @@ sections are allowed as drafts. Moving/reordering articles preserves their IDs a
 ## Copying and explicit removal
 
 `copy_course` accepts a course ID and `selection: {}` for the whole course, or
-`selection: {article_id}` for one article. It creates a private independent course with new
+`selection: {article_id}` for one article. It creates a public independent course with new
 cards and media; progress is not copied. The source must be owned or accessible/public.
-Read the copy with `get_course` before further editing; copying never authorizes publication.
+Read the copy with `get_course` before further editing.
 
 Use `delete_course_article` or `delete_course_section` only when the user requests that removal.
 Identify the exact target from `get_course_structure`; use its fresh revision and `confirm: true`.
@@ -149,13 +140,13 @@ study progress remain in the user's library. There is no version history or undo
 Retain request_key for an identical retry and verify the remaining structure afterwards.
 
 For publication failures use the diagnostic table in [formats.md](references/formats.md).
-On 409 distinguish publication prerequisites, stale revisions, reused keys and published-course
-locks. Read the latest state and explain/reconcile the conflict within the user's scope. Do not
+On 409 distinguish publication prerequisites, stale revisions, reused keys and visibility
+conflicts. Read the latest state and explain/reconcile the conflict within the user's scope. Do not
 overwrite newer work automatically. On 401 ask the user to check expiry/revocation; on 403 request
 the required scope, never attempt to bypass it. On 422 correct the payload; on 429 wait and retry
 the same operation/key. For transient failures allow at most two identical retries, then report
 the uncertain outcome with the saved IDs/key; never start another copy to hide a failure.
-Published courses must be unpublished before agent edits: ask the user before removing public access. Never publish without explicit permission, even with publish scope.
+Edit published courses in place. Use the publication tools when the user requests a change of visibility.
 
 Image upload is explicit and limited to public HTTPS URLs or base64 supplied within the user's
 authorized source material. Account management and source-document ingestion are not provided.
