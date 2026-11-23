@@ -1,0 +1,23 @@
+{
+  "fixture": {
+    "course": "Арифметика",
+    "set": "Устный счёт",
+    "cards": [
+      {"term": "Сколько будет 2 + 2?", "definition": "4"},
+      {"term": "Сколько будет 3 × 3?", "definition": "8", "hint": "Таблица умножения"},
+      {"term": "Сколько будет 5 − 2?", "definition": "3"}
+    ]
+  },
+  "cases": [
+    {
+      "id": "preview",
+      "prompt": "Покажи в чате черновик двух карточек по сложению для набора {set_id}.",
+      "expected": {"weekly_writes_delta": 0, "card_changes": [], "draft_cards_in_chat": 2}
+    },
+    {
+      "id": "correct_one",
+      "prompt": "Исправь в Запоминальне одну карточку в наборе {set_id}: у вопроса «Сколько будет 3 × 3?» ответ должен быть «9».",
+      "expected": {"weekly_writes_delta": 1, "write_tools": ["update_card"], "full_deck_reads": 0, "changed_fields": ["definition"], "definition": "9", "preserve_ids_and_order": true, "preserve_public_course_url": true}
+    }
+  ]
+}

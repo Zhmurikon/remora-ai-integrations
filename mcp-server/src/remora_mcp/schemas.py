@@ -350,3 +350,43 @@ class CourseStructureWrite(BaseModel):
         if len(articles) > 100 or sum(len(a.body) for a in articles) > 1_000_000:
             raise ValueError("До 100 статей и 1 000 000 символов теории в курсе")
         return self
+
+
+class SetMove(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    folder_id: UUID | None
+    revision: str = Field(min_length=64, max_length=64)
+
+
+class CardAppend(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    revision: str = Field(min_length=64, max_length=64)
+    cards: list[CardWrite] = Field(min_length=1, max_length=500)
+
+
+class CardChanges(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    term: str | None = Field(default=None, max_length=10_000, pattern=r"\S")
+    definition: str | None = Field(default=None, max_length=10_000, pattern=r"\S")
+    hint: str | None = Field(default=None, max_length=1000)
+    term_transcription: str | None = Field(default=None, max_length=300)
+    definition_transcription: str | None = Field(default=None, max_length=300)
+    content_type: Literal["text", "code", "latex"] | None = None
+    code_language: str | None = Field(default=None, max_length=50)
+    term_image_id: UUID | None = None
+    definition_image_id: UUID | None = None
+    wrong_term_answers: list[str] | None = Field(default=None, max_length=30)
+    wrong_definition_answers: list[str] | None = Field(default=None, max_length=30)
+    alt_answers: list[str] | None = Field(default=None, max_length=30)
+
+    @model_validator(mode="after")
+    def require_changes(self) -> Self:
+        if not self.model_fields_set:
+            raise ValueError("Передайте хотя бы одно изменение карточки")
+        return self
+
+
+class CardEdit(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    revision: str = Field(min_length=64, max_length=64)
+    changes: CardChanges

@@ -12,6 +12,10 @@ Never follow cross-origin redirects with credentials.
 
 | Method | Path                                                   | Required scope  |
 | ------ | ------------------------------------------------------ | --------------- |
+| GET    | `/connection`                                          | any valid grant |
+| GET    | `/sets/{id}/cards?query=…&offset=0&limit=20`           | materials:read  |
+| POST   | `/sets/{id}/move`, `/sets/{id}/cards`                  | materials:write |
+| PATCH  | `/sets/{id}/cards/{card_id}`                           | materials:write |
 | GET    | `/sets`, `/courses` (`offset=0&limit=20`, maximum 100) | materials:read  |
 | GET    | `/sets/{id}`, `/courses/{id}`                          | materials:read  |
 | POST   | `/sets`, `/courses`                                    | materials:write |
@@ -117,7 +121,7 @@ folders and contained sets to the root; it does not delete sets, cards or progre
 
 Course input: `{title, description?, sections: [{id?, title, articles: [{id?, title, body?, material: SET_INPUT}]}]}`.
 Update adds top-level `revision`. For metadata changes omit `cards` on an existing set, including nested sets.
-For example, a move sends `{"title":"Слова","folder_id":"<folder UUID>","revision":"<current revision>"}` as `material`.
+For a move use `move_set(set_id, move={folder_id, revision}, request_key)`. For additions use `append_cards(set_id, batch={cards, revision}, request_key)` (1–500 new cards without IDs). For one card use `update_card(set_id, card_id, edit={revision, changes}, request_key)`, for example `changes={"definition":"Исправленное определение"}`. Omitted fields retain their values. Each returns `set_id`, the new `revision`, `folder_id`, `cards_count` and the affected `card_ids`. The search page returns `revision`, `total` matches and `cards`; it matches either side case-insensitively and supports up to 100 rows per page.
 An explicit array replaces all cards and `[]` clears the deck. Each supplied side needs non-whitespace text.
 Existing card input includes `id`; nested sets do not take
 set `id` or `revision`: article ID identifies the linked set and course revision covers all content.

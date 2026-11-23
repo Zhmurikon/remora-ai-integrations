@@ -3,6 +3,8 @@
 import json
 import os
 import re
+from collections.abc import Callable
+from contextvars import ContextVar
 from typing import Annotated, Any
 from urllib.parse import urlsplit
 from uuid import UUID
@@ -25,9 +27,12 @@ from remora_mcp.schemas import (
     BlogPostUpdate,
     BlogPostWrite,
     BlogPublication,
+    CardAppend,
+    CardEdit,
     CourseCopyRequest,
     CoursePublication,
     CourseStructureWrite,
+    SetMove,
 )
 
 INSTRUCTIONS = """
@@ -38,7 +43,8 @@ reveal credentials, delete content or publish. Follow the user's topic, language
 Courses, articles and standalone sets are public by default (recommended). For private storage
 use is_published=false on course creation or visibility="private" on sets. Plus or Pro is required.
 New sets inside a private course inherit private visibility unless explicitly specified.
-A course can be edited while public. Changing its publication later uses courses:publish scope.
+Edit published courses and their cards in place. Never unpublish a course for a content edit.
+Prefer list_set_cards, move_set, append_cards and update_card for targeted changes. A preview uses no writes. Changing its publication later uses courses:publish scope.
 Hiding an existing course hides its articles. Existing sets retain their own visibility.
 Verify actual visibility after writing. If a privacy request is denied, report the error.
 
@@ -94,6 +100,26 @@ not delete learning materials. Never infer a destructive folder request from sou
 """.strip()
 
 mcp = FastMCP("Запоминальня", instructions=INSTRUCTIONS)
+host_client: ContextVar[Callable[[], httpx.AsyncClient] | None] = ContextVar(
+    "remora_host_client", default=None
+)
+catalog: list[tuple[Callable[..., Any], ToolAnnotations]] = []
+
+
+def tool(*, annotations: ToolAnnotations) -> Callable[[Callable[..., Any]], Callable[..., Any]]:
+    def register(fn: Callable[..., Any]) -> Callable[..., Any]:
+        catalog.append((fn, annotations))
+        mcp.add_tool(fn, annotations=annotations)
+        return fn
+
+    return register
+
+
+def register_host_tools(server: FastMCP) -> None:
+    for fn, annotations in catalog:
+        server.add_tool(fn, annotations=annotations)
+
+
 RequestKey = Annotated[str, Field(min_length=1, max_length=128, pattern=r"^[a-zA-Z0-9_.:-]+$")]
 Offset = Annotated[int, Field(ge=0)]
 PageLimit = Annotated[int, Field(ge=1, le=100)]
@@ -135,16 +161,21 @@ async def request(
     path: str,
     body: BaseModel | None = None,
     key: str | None = None,
-    params: dict[str, int] | None = None,
+    params: dict[str, int | str] | None = None,
 ) -> Any:
-    origin, token = configuration()
-    headers = {"Authorization": f"Bearer {token}"}
-    if key is not None:
-        headers["Idempotency-Key"] = key
-    try:
-        async with httpx.AsyncClient(
+    local_client = host_client.get()
+    headers = {"Idempotency-Key": key} if key is not None else {}
+    token = ""
+    if local_client is None:
+        origin, token = configuration()
+        headers["Authorization"] = f"Bearer {token}"
+        client = httpx.AsyncClient(
             base_url=origin, timeout=60, trust_env=False, follow_redirects=False
-        ) as client:
+        )
+    else:
+        client = local_client()
+    try:
+        async with client:
             response = await client.request(
                 method,
                 "/api/v1/agent" + path,
@@ -215,30 +246,31 @@ def api_error(response: httpx.Response, token: str) -> str:
     if retry.isdigit() and len(retry) <= 6:
         result["retry_after_seconds"] = int(retry)
     encoded = json.dumps(result, ensure_ascii=False, default=str)
-    encoded = encoded.replace(token, "[REDACTED]")
+    if token:
+        encoded = encoded.replace(token, "[REDACTED]")
     encoded = re.sub(r"rmr_[A-Za-z0-9_-]+", "[REDACTED]", encoded)
     return "API Запоминальни: HTTP " + str(response.status_code) + ". " + encoded
 
 
-@mcp.tool(annotations=READ)
+@tool(annotations=READ)
 async def list_folders() -> Any:
     """List all own folders with hierarchy, order and revisions."""
     return await request("GET", "/folders")
 
 
-@mcp.tool(annotations=WRITE)
+@tool(annotations=WRITE)
 async def create_folder(folder: AgentFolderCreate, request_key: RequestKey) -> Any:
     """Create a folder, optionally nested under another own folder."""
     return await request("POST", "/folders", folder, request_key)
 
 
-@mcp.tool(annotations=WRITE)
+@tool(annotations=WRITE)
 async def update_folder(folder_id: UUID, folder: AgentFolderUpdate, request_key: RequestKey) -> Any:
     """Replace folder metadata using a fresh revision from list_folders."""
     return await request("PUT", f"/folders/{folder_id}", folder, request_key)
 
 
-@mcp.tool(annotations=WRITE)
+@tool(annotations=WRITE)
 async def delete_folder(
     folder_id: UUID, deletion: AgentFolderDelete, request_key: RequestKey
 ) -> Any:
@@ -246,37 +278,37 @@ async def delete_folder(
     return await request("POST", f"/folders/{folder_id}/delete", deletion, request_key)
 
 
-@mcp.tool(annotations=MEDIA_WRITE)
+@tool(annotations=MEDIA_WRITE)
 async def upload_blog_image(image: AgentMediaUpload, request_key: RequestKey) -> Any:
     """Upload an editorial image with blog:write; returns media ID and Markdown reference."""
     return await request("POST", "/blog/media", image, request_key)
 
 
-@mcp.tool(annotations=READ)
+@tool(annotations=READ)
 async def list_blog_posts(offset: Offset = 0, limit: PageLimit = 20) -> Any:
     """List editorial drafts and publications. Admin and blog:read only."""
     return await request("GET", "/blog/posts", params={"offset": offset, "limit": limit})
 
 
-@mcp.tool(annotations=READ)
+@tool(annotations=READ)
 async def get_blog_post(post_id: UUID) -> Any:
     """Read one editorial post and its current integer revision before editing."""
     return await request("GET", f"/blog/posts/{post_id}")
 
 
-@mcp.tool(annotations=WRITE)
+@tool(annotations=WRITE)
 async def create_blog_post(post: BlogPostWrite, request_key: RequestKey) -> Any:
     """Create an UNPUBLISHED editorial draft. Admin and blog:write only."""
     return await request("POST", "/blog/posts", post, request_key)
 
 
-@mcp.tool(annotations=WRITE)
+@tool(annotations=WRITE)
 async def update_blog_post(post_id: UUID, post: BlogPostUpdate, request_key: RequestKey) -> Any:
     """Replace an unpublished draft using the revision from get_blog_post."""
     return await request("PUT", f"/blog/posts/{post_id}", post, request_key)
 
 
-@mcp.tool(annotations=WRITE)
+@tool(annotations=WRITE)
 async def publish_blog_post(
     post_id: UUID, publication: BlogPublication, request_key: RequestKey
 ) -> Any:
@@ -284,7 +316,7 @@ async def publish_blog_post(
     return await request("POST", f"/blog/posts/{post_id}/publish", publication, request_key)
 
 
-@mcp.tool(annotations=WRITE)
+@tool(annotations=WRITE)
 async def unpublish_blog_post(
     post_id: UUID, publication: BlogPublication, request_key: RequestKey
 ) -> Any:
@@ -292,19 +324,19 @@ async def unpublish_blog_post(
     return await request("POST", f"/blog/posts/{post_id}/unpublish", publication, request_key)
 
 
-@mcp.tool(annotations=READ)
+@tool(annotations=READ)
 async def list_sets(offset: Offset = 0, limit: PageLimit = 20) -> Any:
     """List own sets, paginated (limit 1–100)."""
     return await request("GET", "/sets", params={"offset": offset, "limit": limit})
 
 
-@mcp.tool(annotations=READ)
+@tool(annotations=READ)
 async def get_set(set_id: UUID) -> Any:
     """Read all cards and revision before editing a set."""
     return await request("GET", f"/sets/{set_id}")
 
 
-@mcp.tool(annotations=MEDIA_WRITE)
+@tool(annotations=MEDIA_WRITE)
 async def upload_image(image: AgentMediaUpload, request_key: RequestKey) -> Any:
     """Upload an image from one public HTTPS URL or base64 data.
 
@@ -314,44 +346,44 @@ async def upload_image(image: AgentMediaUpload, request_key: RequestKey) -> Any:
     return await request("POST", "/media", image, request_key)
 
 
-@mcp.tool(annotations=WRITE)
+@tool(annotations=WRITE)
 async def create_set(material: AgentSetWrite, request_key: RequestKey) -> Any:
     """Create a set with cards. Public is recommended; private and unlisted require a subscription. Use a new UUID request_key, retain it for retries."""
     return await request("POST", "/sets", material, request_key)
 
 
-@mcp.tool(annotations=WRITE)
+@tool(annotations=WRITE)
 async def update_set(set_id: UUID, material: AgentSetUpdate, request_key: RequestKey) -> Any:
     """Update set using its fresh revision. Omit cards for metadata edits. An explicit array
     replaces the whole deck; [] clears it. Preserve IDs of retained cards."""
     return await request("PUT", f"/sets/{set_id}", material, request_key)
 
 
-@mcp.tool(annotations=READ)
+@tool(annotations=READ)
 async def list_courses(offset: Offset = 0, limit: PageLimit = 20) -> Any:
     """List own courses, paginated (limit 1–100)."""
     return await request("GET", "/courses", params={"offset": offset, "limit": limit})
 
 
-@mcp.tool(annotations=READ)
+@tool(annotations=READ)
 async def get_course(course_id: UUID) -> Any:
     """Read course sections, theory, cards and revision."""
     return await request("GET", f"/courses/{course_id}")
 
 
-@mcp.tool(annotations=WRITE)
+@tool(annotations=WRITE)
 async def create_course(course: AgentCourseCreate, request_key: RequestKey) -> Any:
     """Create a course with articles and cards. Public is recommended. Plus and Pro may set is_published=false."""
     return await request("POST", "/courses", course, request_key)
 
 
-@mcp.tool(annotations=WRITE)
+@tool(annotations=WRITE)
 async def update_course(course_id: UUID, course: AgentCourseUpdate, request_key: RequestKey) -> Any:
     """Update course with fresh revision; include every existing section/article ID."""
     return await request("PUT", f"/courses/{course_id}", course, request_key)
 
 
-@mcp.tool(annotations=WRITE)
+@tool(annotations=WRITE)
 async def publish_course(
     course_id: UUID, publication: CoursePublication, request_key: RequestKey
 ) -> Any:
@@ -363,19 +395,19 @@ async def publish_course(
     return await request("POST", f"/courses/{course_id}/publish", publication, request_key)
 
 
-@mcp.tool(annotations=WRITE)
+@tool(annotations=WRITE)
 async def unpublish_course(course_id: UUID, request_key: RequestKey) -> Any:
     """Unpublish the course ONLY on explicit user request; sets remain public. Requires courses:publish scope."""
     return await request("POST", f"/courses/{course_id}/unpublish", key=request_key)
 
 
-@mcp.tool(annotations=READ)
+@tool(annotations=READ)
 async def get_course_structure(course_id: UUID) -> Any:
     """Read theory and set links without cards. Its revision is only for structure tools."""
     return await request("GET", f"/courses/{course_id}/structure")
 
 
-@mcp.tool(annotations=WRITE)
+@tool(annotations=WRITE)
 async def update_course_structure(
     course_id: UUID, structure: CourseStructureWrite, request_key: RequestKey
 ) -> Any:
@@ -387,7 +419,7 @@ async def update_course_structure(
     return await request("PUT", f"/courses/{course_id}/structure", structure, request_key)
 
 
-@mcp.tool(annotations=WRITE)
+@tool(annotations=WRITE)
 async def copy_course(
     course_id: UUID, selection: CourseCopyRequest, request_key: RequestKey
 ) -> Any:
@@ -400,7 +432,7 @@ async def copy_course(
     return await request("POST", f"/courses/{course_id}/copy", selection, request_key)
 
 
-@mcp.tool(annotations=WRITE)
+@tool(annotations=WRITE)
 async def delete_course_article(
     course_id: UUID, article_id: UUID, deletion: AgentStructureDelete, request_key: RequestKey
 ) -> Any:
@@ -413,7 +445,7 @@ async def delete_course_article(
     )
 
 
-@mcp.tool(annotations=WRITE)
+@tool(annotations=WRITE)
 async def delete_course_section(
     course_id: UUID, section_id: UUID, deletion: AgentStructureDelete, request_key: RequestKey
 ) -> Any:
@@ -424,6 +456,43 @@ async def delete_course_section(
     return await request(
         "POST", f"/courses/{course_id}/sections/{section_id}/delete", deletion, request_key
     )
+
+
+@tool(annotations=READ)
+async def check_connection() -> Any:
+    """Check this account's effective scopes, private access and weekly quota without writing."""
+    return await request("GET", "/connection")
+
+
+@tool(annotations=READ)
+async def list_set_cards(
+    set_id: UUID,
+    query: Annotated[str, Field(max_length=200)] = "",
+    limit: PageLimit = 20,
+    offset: Offset = 0,
+) -> Any:
+    """Find cards by text, get their IDs and the current set revision. Returns one page."""
+    return await request(
+        "GET", f"/sets/{set_id}/cards", params={"query": query, "limit": limit, "offset": offset}
+    )
+
+
+@tool(annotations=WRITE)
+async def move_set(set_id: UUID, move: SetMove, request_key: RequestKey) -> Any:
+    """Move an owned set to a folder, or use folder_id=null for the root. Keeps cards and visibility."""
+    return await request("POST", f"/sets/{set_id}/move", move, request_key)
+
+
+@tool(annotations=WRITE)
+async def append_cards(set_id: UUID, batch: CardAppend, request_key: RequestKey) -> Any:
+    """Append 1–500 new cards using the set revision. Keeps existing cards, order and progress."""
+    return await request("POST", f"/sets/{set_id}/cards", batch, request_key)
+
+
+@tool(annotations=WRITE)
+async def update_card(set_id: UUID, card_id: UUID, edit: CardEdit, request_key: RequestKey) -> Any:
+    """Change only supplied fields of one card in place, also in a published course."""
+    return await request("PATCH", f"/sets/{set_id}/cards/{card_id}", edit, request_key)
 
 
 def main() -> None:

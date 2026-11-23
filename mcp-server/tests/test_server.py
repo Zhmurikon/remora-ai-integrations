@@ -24,7 +24,7 @@ async def test_stdio_handshake_and_schemas() -> None:
     async with stdio_client(params) as (read, write), ClientSession(read, write) as session:
         await session.initialize()
         tools = (await session.list_tools()).tools
-        assert len(tools) == 27
+        assert len(tools) == 32
         create = next(t for t in tools if t.name == "create_course")
         assert "course" in create.inputSchema["properties"]
         create_set = next(t for t in tools if t.name == "create_set")

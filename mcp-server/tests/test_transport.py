@@ -44,6 +44,26 @@ BLOG = {
     "sections": [{"id": "princip", "title": "Принцип", "paragraphs": ["Текст."]}],
 }
 CASES = [
+    ("check_connection", {}, "GET", "/connection"),
+    ("list_set_cards", {"set_id": ID, "query": "плюс"}, "GET", f"/sets/{ID}/cards"),
+    (
+        "move_set",
+        {"set_id": ID, "move": {"folder_id": None, "revision": "a" * 64}},
+        "POST",
+        f"/sets/{ID}/move",
+    ),
+    (
+        "append_cards",
+        {"set_id": ID, "batch": {"cards": SET["cards"], "revision": "a" * 64}},
+        "POST",
+        f"/sets/{ID}/cards",
+    ),
+    (
+        "update_card",
+        {"set_id": ID, "card_id": ID, "edit": {"changes": {"hint": None}, "revision": "a" * 64}},
+        "PATCH",
+        f"/sets/{ID}/cards/{ID}",
+    ),
     ("list_folders", {}, "GET", "/folders"),
     ("create_folder", {"folder": {"title": "Языки"}}, "POST", "/folders"),
     (
@@ -145,6 +165,10 @@ async def test_all_tools_route_and_serialize(transport, name, arguments, method,
     assert request.headers["Authorization"] == "Bearer rmr_" + "x" * 64
     if method != "GET":
         assert request.headers["Idempotency-Key"] == KEY
+    if name == "update_card":
+        assert json.loads(request.content)["changes"] == {"hint": None}
+    if name == "list_set_cards":
+        assert request.url.params["query"] == "плюс"
     if name == "publish_course":
         assert json.loads(request.content) == {"tags": ["алгебра"]}
     if name in {"list_sets", "list_courses", "list_blog_posts"}:

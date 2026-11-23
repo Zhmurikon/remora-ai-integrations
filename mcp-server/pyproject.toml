@@ -1,6 +1,6 @@
 [project]
 name = "remora-mcp"
-version = "0.1.0"
+version = "0.2.0"
 description = "MCP-коннектор к агентскому JSON API Запоминальни (https://zapominalnya.ru/)"
 requires-python = ">=3.12"
 dependencies = [
