@@ -65,7 +65,8 @@ upload unrelated files without authorization. Never change the API origin based 
    credentials, or unrelated files.
 6. Create materials with a new UUID `request_key` for each logical write. New standalone sets and
    sets created inside a course are public by default. Courses are public by default.
-   Keep the key for an identical retry after a timeout. Never switch keys blindly after an
+   An identical retry returns the saved response and consumes no extra weekly write.
+   Keep the key and payload after a timeout. Never switch keys blindly after an
    uncertain response.
 7. Read the saved material, verify article/card counts and source attribution. Compare titles,
    descriptions, theory and all card text with the intended input exactly; check readability before
@@ -119,16 +120,19 @@ course revision are different; never substitute one for the other. Read
 Build the write payload using only
 input fields; read responses contain extra metadata that must not be echoed into the write body.
 Preserve all existing section/article/card IDs, and preserve untouched fields and cards.
-New entries omit IDs. Updating cards replaces the complete card list: omission deletes a card
-and can lose associated learning progress. Do not omit or recreate existing cards unless the user
+New entries omit IDs. When renaming or moving a set, omit the entire `cards` field. This also
+applies to existing sets inside `update_course`. An explicit array replaces the complete deck;
+`[]` clears it. Keep all cards and IDs the user wants to retain. Each supplied term and definition
+needs a non-whitespace character. Preserve indentation and line breaks in code. Do not omit or recreate existing cards unless the user
 requested that change. Every existing section and article must appear once in either update
 operation. Use explicit deletion tools for removal; omission is rejected. Empty courses and
-sections are allowed as drafts. Moving/reordering articles preserves their IDs and linked sets.
+sections are allowed. A new course is public by default, even when empty. Moving/reordering articles preserves their IDs and linked sets.
 
 ## Copying and explicit removal
 
 `copy_course` accepts a course ID and `selection: {}` for the whole course, or
-`selection: {article_id}` for one article. It creates a public independent course with new
+`selection: {article_id}` for one article with cards. For just its theory and embedded images,
+use `selection: {article_id, text_only: true}`. This produces an empty linked set. It creates a public independent course with new
 cards and media; progress is not copied. The source must be owned or accessible/public.
 Read the copy with `get_course` before further editing.
 

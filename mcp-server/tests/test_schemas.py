@@ -11,6 +11,7 @@ from remora_mcp.schemas import (
     AgentSectionWrite,
     AgentSetWrite,
     CardWrite,
+    CourseCopyRequest,
     CoursePublication,
 )
 
@@ -193,3 +194,22 @@ def test_card_json_schema_explains_mixed_content_contract():
     assert "$...$" in properties["term"]["description"]
     assert "целиком LaTeX без $" in properties["content_type"]["description"]
     assert "изображения первой стороны" in properties["term_image_id"]["description"]
+
+
+@pytest.mark.parametrize(("field", "value"), [("term", ""), ("definition", " \t\n\u00a0")])
+def test_blank_side_and_literal_code(field, value):
+    code = {
+        "term": "    return 1\n",
+        "definition": "  один  ",
+        "content_type": "code",
+        "code_language": "python",
+    }
+    assert CardWrite.model_validate(code).term == code["term"]
+    with pytest.raises(ValidationError):
+        CardWrite.model_validate({**code, field: value})
+
+
+def test_text_only_requires_an_article():
+    with pytest.raises(ValidationError):
+        CourseCopyRequest(text_only=True)
+    assert CourseCopyRequest(article_id=UUID(int=1), text_only=True).text_only

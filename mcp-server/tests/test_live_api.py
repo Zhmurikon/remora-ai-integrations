@@ -92,9 +92,17 @@ async def test_publication_lifecycle_over_stdio():
                     ],
                 }
                 args = {"material": material, "request_key": str(uuid4())}
+
+                async def weekly_writes():
+                    response = await api.get("/api/v1/billing/entitlements", headers=owner)
+                    response.raise_for_status()
+                    return response.json()["usage"]["agent.writes_per_week"]
+
+                used = await weekly_writes()
                 study_set = await call("create_set", args)
                 assert study_set["visibility"] == "public"
                 assert await call("create_set", args) == study_set
+                assert await weekly_writes() == used + 1
                 await call(
                     "create_set", {**args, "material": {**material, "title": "Другое"}}, "409"
                 )
@@ -102,6 +110,36 @@ async def test_publication_lifecycle_over_stdio():
                     await api.get("/api/v1/sets/public/" + study_set["slug"])
                 ).status_code == 200
                 current = await call("get_set", {"set_id": study_set["id"]})
+                folder = await call(
+                    "create_folder",
+                    {"folder": {"title": "Арифметика"}, "request_key": str(uuid4())},
+                )
+                original_cards = current["cards"]
+                await call(
+                    "update_set",
+                    {
+                        "set_id": current["id"],
+                        "material": {
+                            "title": "В папке",
+                            "folder_id": folder["id"],
+                            "revision": current["revision"],
+                        },
+                        "request_key": str(uuid4()),
+                    },
+                )
+                current = await call("get_set", {"set_id": study_set["id"]})
+                assert current["folder_id"] == folder["id"] and current["cards"] == original_cards
+                await call(
+                    "create_set",
+                    {
+                        "material": {
+                            "title": "Пустая сторона",
+                            "cards": [{"term": "  ", "definition": "Ответ"}],
+                        },
+                        "request_key": str(uuid4()),
+                    },
+                    "term",
+                )
                 update = AgentSetUpdate.model_validate(
                     {
                         k: v
@@ -214,6 +252,19 @@ async def test_publication_lifecycle_over_stdio():
                 copied = await call(
                     "copy_course", {**course_args, "selection": {}, "request_key": str(uuid4())}
                 )
+                text_copy = await call(
+                    "copy_course",
+                    {
+                        **course_args,
+                        "selection": {"article_id": original["id"], "text_only": True},
+                        "request_key": str(uuid4()),
+                    },
+                )
+                lesson = (await call("get_course", {"course_id": text_copy["id"]}))["sections"][0][
+                    "articles"
+                ][0]
+                assert lesson["body"].startswith("## Сложение") and "media:" in lesson["body"]
+                assert image["id"] not in lesson["body"] and lesson["material"]["cards"] == []
                 copy_full = await call("get_course", {"course_id": copied["id"]})
                 assert copy_full["is_published"]
                 assert image["id"] not in copy_full["sections"][0]["articles"][0]["body"]

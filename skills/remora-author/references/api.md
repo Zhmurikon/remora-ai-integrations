@@ -32,9 +32,9 @@ Never follow cross-origin redirects with credentials.
 | PUT    | `/blog/posts/{id}`                                     | blog:write      |
 | POST   | `/blog/posts/{id}/publish`, `/blog/posts/{id}/unpublish` | blog:publish  |
 
-All writes require `Idempotency-Key`: new UUID per logical operation, identical retries reuse it.
+All writes require `Idempotency-Key`: new UUID per logical operation, identical retries reuse it and return the saved response without consuming another weekly write.
 PUT also requires the latest `revision` from GET. Reusing a key with a different payload is 409.
-Errors use `{code, message, details?}`. OpenAPI: `/openapi.json` on the API origin.
+Errors use `{code, message, details?}`. OpenAPI: `/api/v1/openapi.json` on the API origin.
 
 Image upload accepts exactly one source:
 
@@ -116,9 +116,12 @@ Folders organize sets without changing their visibility. Create with
 folders and contained sets to the root; it does not delete sets, cards or progress.
 
 Course input: `{title, description?, sections: [{id?, title, articles: [{id?, title, body?, material: SET_INPUT}]}]}`.
-Update adds top-level `revision`. Existing card input includes `id`; nested sets do not take
+Update adds top-level `revision`. For metadata changes omit `cards` on an existing set, including nested sets.
+For example, a move sends `{"title":"Слова","folder_id":"<folder UUID>","revision":"<current revision>"}` as `material`.
+An explicit array replaces all cards and `[]` clears the deck. Each supplied side needs non-whitespace text.
+Existing card input includes `id`; nested sets do not take
 set `id` or `revision`: article ID identifies the linked set and course revision covers all content.
-Read response includes IDs, positions, timestamps, visibility, counts and revisions; these are not
+Read response includes IDs, positions, timestamps, counts and nested revisions; these are not
 write fields. Preserve optional card data such as hint, alt_answers, transcriptions, image IDs,
 content_type and code_language when updating.
 
@@ -129,7 +132,7 @@ image first, then set its returned `id` as `term_image_id` or `definition_image_
 supplement rather than replace side text.
 
 Limits per course request: 50 sections, 100 articles, 5000 cards, 100,000 characters per body,
-1,000,000 characters of theory total. Empty courses/sections are allowed as drafts. No implicit deletion
+1,000,000 characters of theory total. Empty courses/sections are allowed and new courses default to public. No implicit deletion
 of sections/articles. Empty card sets may be drafts; every article needs cards before publication.
 Publishing takes `{ "tags": ["биология"] }`; unpublishing has no body.
 
@@ -168,7 +171,7 @@ Published courses can be edited in place.
 
 ## Copy/delete operations
 
-- `copy_course(course_id, selection, request_key)`: POST copy with `{}` or `{article_id: UUID}`.
+- `copy_course(course_id, selection, request_key)`: POST copy with `{}` or `{article_id: UUID}`. Add `text_only: true` alongside the article ID to copy its theory and embedded media with an empty set.
   Own or accessible published sources only. Returns new public CourseEditorDetail (structure),
   not full cards. Read `get_course(new_id)` to verify cards and obtain full-course revision.
   An article becomes its own course; media and wrong answers are copied, study progress is not.

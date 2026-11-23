@@ -71,10 +71,12 @@ and 1000000 total. These are ceilings, not targets. Never silently truncate or c
 
 Read fresh revisions before updates; full-content and structure revisions are different.
 Prefer structure tools for theory/order changes. Preserve existing IDs and untouched fields.
-PUT replaces the COMPLETE card list: omissions delete cards/progress. Include every existing
+Omit the cards field when updating only metadata, including nested sets. An explicit cards array
+replaces the entire deck; [] clears it. Both card sides require non-whitespace text. Include every existing
 section/article exactly once; removal requires explicit delete tools, confirm=true and user intent.
 Delete article/section removes theory permanently but retains linked sets/cards/study progress.
 Use a new request_key per logical write and the SAME key/payload after an uncertain response.
+An identical replay returns the saved result without charging the weekly quota again.
 On 409 distinguish stale revision, key reuse, publication prerequisites and visibility conflicts;
 do not retry blindly or overwrite newer work. On 401 check token, on 403 inspect required_scope,
 on 422 fix the named fields, on 429 wait; use at most two identical retries for transient failures,
@@ -320,7 +322,8 @@ async def create_set(material: AgentSetWrite, request_key: RequestKey) -> Any:
 
 @mcp.tool(annotations=WRITE)
 async def update_set(set_id: UUID, material: AgentSetUpdate, request_key: RequestKey) -> Any:
-    """Replace set contents with fresh revision. Omitted cards are deleted; preserve card IDs."""
+    """Update set using its fresh revision. Omit cards for metadata edits. An explicit array
+    replaces the whole deck; [] clears it. Preserve IDs of retained cards."""
     return await request("PUT", f"/sets/{set_id}", material, request_key)
 
 
@@ -388,7 +391,8 @@ async def update_course_structure(
 async def copy_course(
     course_id: UUID, selection: CourseCopyRequest, request_key: RequestKey
 ) -> Any:
-    """Copy own/accessible public course; selection.article_id copies only that article.
+    """Copy an accessible course. With article_id copy one lesson; add text_only=true for
+    theory and its images with an empty card set.
 
     Returns public course structure with independent cards/media and no study progress.
     Read get_course afterwards for complete cards and its separate full-content revision.

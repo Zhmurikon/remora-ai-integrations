@@ -37,6 +37,7 @@ class CardWrite(BaseModel):
     id: UUID | None = None
     term: str = Field(
         max_length=10_000,
+        pattern=r"\S",
         description=(
             "Первая сторона. При content_type=text поддерживает обычный текст, "
             "строчные $...$ и блочные $$...$$ формулы KaTeX на отдельных строках."
@@ -44,6 +45,7 @@ class CardWrite(BaseModel):
     )
     definition: str = Field(
         max_length=10_000,
+        pattern=r"\S",
         description=(
             "Вторая сторона. При content_type=text поддерживает обычный текст, "
             "строчные $...$ и блочные $$...$$ формулы KaTeX на отдельных строках."
@@ -130,7 +132,14 @@ class AgentSetWrite(CourseMetadata):
     lang_term: str = Field(default="ru", min_length=2, max_length=10)
     lang_definition: str = Field(default="ru", min_length=2, max_length=10)
     folder_id: UUID | None = None
-    cards: list[CardWrite] = Field(default_factory=list, max_length=5000)
+    cards: list[CardWrite] = Field(
+        default_factory=list,
+        max_length=5000,
+        description=(
+            "При обновлении пропустите поле для сохранения карточек. "
+            "Явный массив заменяет колоду, [] очищает её."
+        ),
+    )
 
 
 class AgentSetUpdate(AgentSetWrite):
@@ -218,6 +227,13 @@ class AgentMediaUpload(BaseModel):
 class CourseCopyRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
     article_id: UUID | None = None
+    text_only: bool = False
+
+    @model_validator(mode="after")
+    def text_requires_article(self) -> Self:
+        if self.text_only and self.article_id is None:
+            raise ValueError("Для копирования текста выберите статью")
+        return self
 
 
 class CoursePublication(BaseModel):
